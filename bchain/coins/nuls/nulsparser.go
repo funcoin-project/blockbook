@@ -1,18 +1,18 @@
 package nuls
 
 import (
-	"blockbook/bchain"
-	"blockbook/bchain/coins/btc"
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
-	vlq "github.com/bsm/go-vlq"
-	"github.com/martinboehm/btcutil/base58"
 
+	vlq "github.com/bsm/go-vlq"
 	"github.com/martinboehm/btcd/wire"
+	"github.com/martinboehm/btcutil/base58"
 	"github.com/martinboehm/btcutil/chaincfg"
 	"github.com/martinboehm/btcutil/hdkeychain"
+	"github.com/trezor/blockbook/bchain"
+	"github.com/trezor/blockbook/bchain/coins/btc"
 )
 
 // magic numbers
@@ -59,12 +59,12 @@ func init() {
 
 // NulsParser handle
 type NulsParser struct {
-	*btc.BitcoinParser
+	*btc.BitcoinLikeParser
 }
 
 // NewNulsParser returns new NulsParser instance
 func NewNulsParser(params *chaincfg.Params, c *btc.Configuration) *NulsParser {
-	return &NulsParser{BitcoinParser: btc.NewBitcoinParser(params, c)}
+	return &NulsParser{BitcoinLikeParser: btc.NewBitcoinLikeParser(params, c)}
 }
 
 // GetChainParams contains network parameters for the main Gincoin network,

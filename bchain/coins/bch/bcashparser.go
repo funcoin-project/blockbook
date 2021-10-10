@@ -1,8 +1,6 @@
 package bch
 
 import (
-	"blockbook/bchain"
-	"blockbook/bchain/coins/btc"
 	"fmt"
 
 	"github.com/martinboehm/bchutil"
@@ -10,6 +8,8 @@ import (
 	"github.com/martinboehm/btcutil/chaincfg"
 	"github.com/martinboehm/btcutil/txscript"
 	"github.com/schancel/cashaddr-converter/address"
+	"github.com/trezor/blockbook/bchain"
+	"github.com/trezor/blockbook/bchain/coins/btc"
 )
 
 // AddressFormat type is used to specify different formats of address
@@ -53,7 +53,7 @@ func init() {
 
 // BCashParser handle
 type BCashParser struct {
-	*btc.BitcoinParser
+	*btc.BitcoinLikeParser
 	AddressFormat AddressFormat
 }
 
@@ -71,8 +71,8 @@ func NewBCashParser(params *chaincfg.Params, c *btc.Configuration) (*BCashParser
 		return nil, fmt.Errorf("Unknown address format: %s", c.AddressFormat)
 	}
 	p := &BCashParser{
-		BitcoinParser: btc.NewBitcoinParser(params, c),
-		AddressFormat: format,
+		BitcoinLikeParser: btc.NewBitcoinLikeParser(params, c),
+		AddressFormat:     format,
 	}
 	p.OutputScriptToAddressesFunc = p.outputScriptToAddresses
 	return p, nil

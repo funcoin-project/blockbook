@@ -1,9 +1,6 @@
 package btg
 
 import (
-	"blockbook/bchain"
-	"blockbook/bchain/coins/btc"
-	"blockbook/bchain/coins/utils"
 	"bytes"
 	"encoding/binary"
 	"io"
@@ -11,6 +8,9 @@ import (
 	"github.com/martinboehm/btcd/chaincfg/chainhash"
 	"github.com/martinboehm/btcd/wire"
 	"github.com/martinboehm/btcutil/chaincfg"
+	"github.com/trezor/blockbook/bchain"
+	"github.com/trezor/blockbook/bchain/coins/btc"
+	"github.com/trezor/blockbook/bchain/coins/utils"
 )
 
 const (
@@ -47,12 +47,12 @@ func init() {
 
 // BGoldParser handle
 type BGoldParser struct {
-	*btc.BitcoinParser
+	*btc.BitcoinLikeParser
 }
 
 // NewBGoldParser returns new BGoldParser instance
 func NewBGoldParser(params *chaincfg.Params, c *btc.Configuration) *BGoldParser {
-	return &BGoldParser{BitcoinParser: btc.NewBitcoinParser(params, c)}
+	return &BGoldParser{BitcoinLikeParser: btc.NewBitcoinLikeParser(params, c)}
 }
 
 // GetChainParams contains network parameters for the main Bitcoin Cash network,

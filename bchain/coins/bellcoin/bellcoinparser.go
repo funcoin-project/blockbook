@@ -1,10 +1,9 @@
 package bellcoin
 
 import (
-	"blockbook/bchain/coins/btc"
-
 	"github.com/martinboehm/btcd/wire"
 	"github.com/martinboehm/btcutil/chaincfg"
+	"github.com/trezor/blockbook/bchain/coins/btc"
 )
 
 // magic numbers
@@ -35,12 +34,12 @@ func init() {
 
 // BellcoinParser handle
 type BellcoinParser struct {
-	*btc.BitcoinParser
+	*btc.BitcoinLikeParser
 }
 
 // NewBellcoinParser returns new BellcoinParser instance
 func NewBellcoinParser(params *chaincfg.Params, c *btc.Configuration) *BellcoinParser {
-	return &BellcoinParser{BitcoinParser: btc.NewBitcoinParser(params, c)}
+	return &BellcoinParser{BitcoinLikeParser: btc.NewBitcoinLikeParser(params, c)}
 }
 
 // GetChainParams contains network parameters for the main Bellcoin network,

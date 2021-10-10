@@ -1,10 +1,9 @@
 package litecoin
 
 import (
-	"blockbook/bchain/coins/btc"
-
 	"github.com/martinboehm/btcd/wire"
 	"github.com/martinboehm/btcutil/chaincfg"
+	"github.com/trezor/blockbook/bchain/coins/btc"
 )
 
 // magic numbers
@@ -36,12 +35,12 @@ func init() {
 
 // LitecoinParser handle
 type LitecoinParser struct {
-	*btc.BitcoinParser
+	*btc.BitcoinLikeParser
 }
 
 // NewLitecoinParser returns new LitecoinParser instance
 func NewLitecoinParser(params *chaincfg.Params, c *btc.Configuration) *LitecoinParser {
-	return &LitecoinParser{BitcoinParser: btc.NewBitcoinParser(params, c)}
+	return &LitecoinParser{BitcoinLikeParser: btc.NewBitcoinLikeParser(params, c)}
 }
 
 // GetChainParams contains network parameters for the main Litecoin network,

@@ -1,11 +1,10 @@
 package deeponion
 
 import (
-	"blockbook/bchain"
-	"blockbook/bchain/coins/btc"
-
 	"github.com/martinboehm/btcd/wire"
 	"github.com/martinboehm/btcutil/chaincfg"
+	"github.com/trezor/blockbook/bchain"
+	"github.com/trezor/blockbook/bchain/coins/btc"
 )
 
 // magic numbers
@@ -28,15 +27,15 @@ func init() {
 
 // DeepOnionParser handle
 type DeepOnionParser struct {
-	*btc.BitcoinParser
+	*btc.BitcoinLikeParser
 	baseparser *bchain.BaseParser
 }
 
 // NewDeepOnionParser returns new DeepOnionParser instance
 func NewDeepOnionParser(params *chaincfg.Params, c *btc.Configuration) *DeepOnionParser {
 	return &DeepOnionParser{
-		BitcoinParser: btc.NewBitcoinParser(params, c),
-		baseparser:    &bchain.BaseParser{},
+		BitcoinLikeParser: btc.NewBitcoinLikeParser(params, c),
+		baseparser:        &bchain.BaseParser{},
 	}
 }
 

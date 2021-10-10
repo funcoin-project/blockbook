@@ -1,10 +1,9 @@
 package cpuchain
 
 import (
-	"blockbook/bchain/coins/btc"
-
 	"github.com/martinboehm/btcd/wire"
 	"github.com/martinboehm/btcutil/chaincfg"
+	"github.com/trezor/blockbook/bchain/coins/btc"
 )
 
 // magic numbers
@@ -35,12 +34,12 @@ func init() {
 
 // CPUchainParser handle
 type CPUchainParser struct {
-	*btc.BitcoinParser
+	*btc.BitcoinLikeParser
 }
 
 // NewCPUchainParser returns new CPUchainParser instance
 func NewCPUchainParser(params *chaincfg.Params, c *btc.Configuration) *CPUchainParser {
-	return &CPUchainParser{BitcoinParser: btc.NewBitcoinParser(params, c)}
+	return &CPUchainParser{BitcoinLikeParser: btc.NewBitcoinLikeParser(params, c)}
 }
 
 // GetChainParams contains network parameters for the main CPUchain network,

@@ -1,13 +1,13 @@
 package viacoin
 
 import (
-	"blockbook/bchain"
-	"blockbook/bchain/coins/btc"
-	"blockbook/bchain/coins/utils"
 	"bytes"
 
 	"github.com/martinboehm/btcd/wire"
 	"github.com/martinboehm/btcutil/chaincfg"
+	"github.com/trezor/blockbook/bchain"
+	"github.com/trezor/blockbook/bchain/coins/btc"
+	"github.com/trezor/blockbook/bchain/coins/utils"
 )
 
 // magic numbers
@@ -42,12 +42,12 @@ func init() {
 
 // ViacoinParser handle
 type ViacoinParser struct {
-	*btc.BitcoinParser
+	*btc.BitcoinLikeParser
 }
 
 // NewViacoinParser returns new VertcoinParser instance
 func NewViacoinParser(params *chaincfg.Params, c *btc.Configuration) *ViacoinParser {
-	return &ViacoinParser{BitcoinParser: btc.NewBitcoinParser(params, c)}
+	return &ViacoinParser{BitcoinLikeParser: btc.NewBitcoinLikeParser(params, c)}
 }
 
 // GetChainParams returns network parameters

@@ -1,16 +1,15 @@
 package liquid
 
 import (
-	"blockbook/bchain"
-	"blockbook/bchain/coins/btc"
 	"strconv"
 
 	vlq "github.com/bsm/go-vlq"
 	"github.com/golang/glog"
-
 	"github.com/martinboehm/btcd/txscript"
 	"github.com/martinboehm/btcd/wire"
 	"github.com/martinboehm/btcutil/chaincfg"
+	"github.com/trezor/blockbook/bchain"
+	"github.com/trezor/blockbook/bchain/coins/btc"
 )
 
 const (
@@ -33,7 +32,7 @@ func init() {
 
 // LiquidParser handle
 type LiquidParser struct {
-	*btc.BitcoinParser
+	*btc.BitcoinLikeParser
 	baseparser                      *bchain.BaseParser
 	origOutputScriptToAddressesFunc btc.OutputScriptToAddressesFunc
 }
@@ -41,8 +40,8 @@ type LiquidParser struct {
 // NewLiquidParser returns new LiquidParser instance
 func NewLiquidParser(params *chaincfg.Params, c *btc.Configuration) *LiquidParser {
 	p := &LiquidParser{
-		BitcoinParser: btc.NewBitcoinParser(params, c),
-		baseparser:    &bchain.BaseParser{},
+		BitcoinLikeParser: btc.NewBitcoinLikeParser(params, c),
+		baseparser:        &bchain.BaseParser{},
 	}
 	p.origOutputScriptToAddressesFunc = p.OutputScriptToAddressesFunc
 	p.OutputScriptToAddressesFunc = p.outputScriptToAddresses

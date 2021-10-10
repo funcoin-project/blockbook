@@ -1,13 +1,13 @@
 package ritocoin
 
 import (
-	"blockbook/bchain"
-	"blockbook/bchain/coins/btc"
-	"blockbook/bchain/coins/utils"
 	"bytes"
 
 	"github.com/martinboehm/btcd/wire"
 	"github.com/martinboehm/btcutil/chaincfg"
+	"github.com/trezor/blockbook/bchain"
+	"github.com/trezor/blockbook/bchain/coins/btc"
+	"github.com/trezor/blockbook/bchain/coins/utils"
 )
 
 // magic numbers
@@ -36,12 +36,12 @@ func init() {
 
 // RitocoinParser handle
 type RitocoinParser struct {
-	*btc.BitcoinParser
+	*btc.BitcoinLikeParser
 }
 
 // NewRitocoinParser returns new RitocoinParser instance
 func NewRitocoinParser(params *chaincfg.Params, c *btc.Configuration) *RitocoinParser {
-	return &RitocoinParser{BitcoinParser: btc.NewBitcoinParser(params, c)}
+	return &RitocoinParser{BitcoinLikeParser: btc.NewBitcoinLikeParser(params, c)}
 }
 
 // GetChainParams contains network parameters

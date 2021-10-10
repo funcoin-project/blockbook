@@ -1,10 +1,9 @@
 package monacoin
 
 import (
-	"blockbook/bchain/coins/btc"
-
 	"github.com/martinboehm/btcd/wire"
 	"github.com/martinboehm/btcutil/chaincfg"
+	"github.com/trezor/blockbook/bchain/coins/btc"
 )
 
 // magic numbers
@@ -35,12 +34,12 @@ func init() {
 
 // MonacoinParser handle
 type MonacoinParser struct {
-	*btc.BitcoinParser
+	*btc.BitcoinLikeParser
 }
 
 // NewMonacoinParser returns new MonacoinParser instance
 func NewMonacoinParser(params *chaincfg.Params, c *btc.Configuration) *MonacoinParser {
-	return &MonacoinParser{BitcoinParser: btc.NewBitcoinParser(params, c)}
+	return &MonacoinParser{BitcoinLikeParser: btc.NewBitcoinLikeParser(params, c)}
 }
 
 // GetChainParams contains network parameters for the main Monacoin network,

@@ -1,10 +1,6 @@
 package server
 
 import (
-	"blockbook/api"
-	"blockbook/bchain"
-	"blockbook/common"
-	"blockbook/db"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -22,6 +18,10 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/trezor/blockbook/api"
+	"github.com/trezor/blockbook/bchain"
+	"github.com/trezor/blockbook/common"
+	"github.com/trezor/blockbook/db"
 )
 
 const txsOnPage = 25
@@ -58,9 +58,9 @@ type PublicServer struct {
 
 // NewPublicServer creates new public server http interface to blockbook and returns its handle
 // only basic functionality is mapped, to map all functions, call
-func NewPublicServer(binding string, certFiles string, db *db.RocksDB, chain bchain.BlockChain, mempool bchain.Mempool, txCache *db.TxCache, explorerURL string, metrics *common.Metrics, is *common.InternalState, debugMode bool) (*PublicServer, error) {
+func NewPublicServer(binding string, certFiles string, db *db.RocksDB, chain bchain.BlockChain, mempool bchain.Mempool, txCache *db.TxCache, explorerURL string, metrics *common.Metrics, is *common.InternalState, debugMode bool, enableSubNewTx bool) (*PublicServer, error) {
 
-	api, err := api.NewWorker(db, chain, mempool, txCache, is)
+	api, err := api.NewWorker(db, chain, mempool, txCache, metrics, is)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func NewPublicServer(binding string, certFiles string, db *db.RocksDB, chain bch
 		return nil, err
 	}
 
-	websocket, err := NewWebsocketServer(db, chain, mempool, txCache, metrics, is)
+	websocket, err := NewWebsocketServer(db, chain, mempool, txCache, metrics, is, enableSubNewTx)
 	if err != nil {
 		return nil, err
 	}
@@ -219,10 +219,14 @@ func (s *PublicServer) OnNewFiatRatesTicker(ticker *db.CurrencyRatesTicker) {
 	s.websocket.OnNewFiatRatesTicker(ticker)
 }
 
-// OnNewTxAddr notifies users subscribed to bitcoind/addresstxid about new block
+// OnNewTxAddr notifies users subscribed to notification about new tx
 func (s *PublicServer) OnNewTxAddr(tx *bchain.Tx, desc bchain.AddressDescriptor) {
 	s.socketio.OnNewTxAddr(tx.Txid, desc)
-	s.websocket.OnNewTxAddr(tx, desc)
+}
+
+// OnNewTx notifies users subscribed to notification about new tx
+func (s *PublicServer) OnNewTx(tx *bchain.MempoolTx) {
+	s.websocket.OnNewTx(tx)
 }
 
 func (s *PublicServer) txRedirect(w http.ResponseWriter, r *http.Request) {
@@ -254,7 +258,13 @@ func joinURL(base string, part string) string {
 }
 
 func getFunctionName(i interface{}) string {
-	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
+	name := runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
+	start := strings.LastIndex(name, ".")
+	end := strings.LastIndex(name, "-")
+	if start > 0 && end > start {
+		name = name[start+1 : end]
+	}
+	return name
 }
 
 func (s *PublicServer) jsonHandler(handler func(r *http.Request, apiVersion int) (interface{}, error), apiVersion int) func(w http.ResponseWriter, r *http.Request) {
@@ -262,12 +272,13 @@ func (s *PublicServer) jsonHandler(handler func(r *http.Request, apiVersion int)
 		Text       string `json:"error"`
 		HTTPStatus int    `json:"-"`
 	}
+	handlerName := getFunctionName(handler)
 	return func(w http.ResponseWriter, r *http.Request) {
 		var data interface{}
 		var err error
 		defer func() {
 			if e := recover(); e != nil {
-				glog.Error(getFunctionName(handler), " recovered from panic: ", e)
+				glog.Error(handlerName, " recovered from panic: ", e)
 				debug.PrintStack()
 				if s.debug {
 					data = jsonError{fmt.Sprint("Internal server error: recovered from panic ", e), http.StatusInternalServerError}
@@ -283,7 +294,9 @@ func (s *PublicServer) jsonHandler(handler func(r *http.Request, apiVersion int)
 			if err != nil {
 				glog.Warning("json encode ", err)
 			}
+			s.metrics.ExplorerPendingRequests.With((common.Labels{"method": handlerName})).Dec()
 		}()
+		s.metrics.ExplorerPendingRequests.With((common.Labels{"method": handlerName})).Inc()
 		data, err = handler(r, apiVersion)
 		if err != nil || data == nil {
 			if apiErr, ok := err.(*api.APIError); ok {
@@ -294,7 +307,7 @@ func (s *PublicServer) jsonHandler(handler func(r *http.Request, apiVersion int)
 				}
 			} else {
 				if err != nil {
-					glog.Error(getFunctionName(handler), " error: ", err)
+					glog.Error(handlerName, " error: ", err)
 				}
 				if s.debug {
 					if data != nil {
@@ -328,13 +341,14 @@ func (s *PublicServer) newTemplateDataWithError(text string) *TemplateData {
 }
 
 func (s *PublicServer) htmlTemplateHandler(handler func(w http.ResponseWriter, r *http.Request) (tpl, *TemplateData, error)) func(w http.ResponseWriter, r *http.Request) {
+	handlerName := getFunctionName(handler)
 	return func(w http.ResponseWriter, r *http.Request) {
 		var t tpl
 		var data *TemplateData
 		var err error
 		defer func() {
 			if e := recover(); e != nil {
-				glog.Error(getFunctionName(handler), " recovered from panic: ", e)
+				glog.Error(handlerName, " recovered from panic: ", e)
 				debug.PrintStack()
 				t = errorInternalTpl
 				if s.debug {
@@ -354,7 +368,9 @@ func (s *PublicServer) htmlTemplateHandler(handler func(w http.ResponseWriter, r
 					glog.Error(err)
 				}
 			}
+			s.metrics.ExplorerPendingRequests.With((common.Labels{"method": handlerName})).Dec()
 		}()
+		s.metrics.ExplorerPendingRequests.With((common.Labels{"method": handlerName})).Inc()
 		if s.debug {
 			// reload templates on each request
 			// to reflect changes during development
@@ -371,7 +387,7 @@ func (s *PublicServer) htmlTemplateHandler(handler func(w http.ResponseWriter, r
 				}
 			} else {
 				if err != nil {
-					glog.Error(getFunctionName(handler), " error: ", err)
+					glog.Error(handlerName, " error: ", err)
 				}
 				if s.debug {
 					data = s.newTemplateDataWithError(fmt.Sprintf("Internal server error: %v, data %+v", err, data))
@@ -436,6 +452,7 @@ func (s *PublicServer) parseTemplates() []*template.Template {
 		"setTxToTemplateData":      setTxToTemplateData,
 		"isOwnAddress":             isOwnAddress,
 		"isOwnAddresses":           isOwnAddresses,
+		"toJSON":                   toJSON,
 	}
 	var createTemplate func(filenames ...string) *template.Template
 	if s.debug {
@@ -501,6 +518,14 @@ func formatUnixTime(ut int64) string {
 
 func formatTime(t time.Time) string {
 	return t.Format(time.RFC1123)
+}
+
+func toJSON(data interface{}) string {
+	json, err := json.Marshal(data)
+	if err != nil {
+		return ""
+	}
+	return string(json)
 }
 
 // for now return the string as it is
@@ -625,6 +650,8 @@ func (s *PublicServer) getAddressQueryParams(r *http.Request, accountDetails api
 		accountDetails = api.AccountDetailsTokenBalances
 	case "txids":
 		accountDetails = api.AccountDetailsTxidHistory
+	case "txslight":
+		accountDetails = api.AccountDetailsTxHistoryLight
 	case "txs":
 		accountDetails = api.AccountDetailsTxHistory
 	}
@@ -641,11 +668,13 @@ func (s *PublicServer) getAddressQueryParams(r *http.Request, accountDetails api
 	if ec != nil {
 		gap = 0
 	}
+	contract := r.URL.Query().Get("contract")
 	return page, pageSize, accountDetails, &api.AddressFilter{
 		Vout:           voutFilter,
 		TokensToReturn: tokensToReturn,
 		FromHeight:     uint32(from),
 		ToHeight:       uint32(to),
+		Contract:       contract,
 	}, filterParam, gap
 }
 
@@ -670,6 +699,9 @@ func (s *PublicServer) explorerAddress(w http.ResponseWriter, r *http.Request) (
 	data.Address = address
 	data.Page = address.Page
 	data.PagingRange, data.PrevPage, data.NextPage = getPagingRange(address.Page, address.TotalPages)
+	if filterParam == "" && filter.Vout > -1 {
+		filterParam = strconv.Itoa(filter.Vout)
+	}
 	if filterParam != "" {
 		data.PageParams = template.URL("&filter=" + filterParam)
 		data.Address.Filter = filterParam
@@ -964,6 +996,9 @@ func (s *PublicServer) apiTxSpecific(r *http.Request, apiVersion int) (interface
 	var err error
 	s.metrics.ExplorerViews.With(common.Labels{"action": "api-tx-specific"}).Inc()
 	tx, err = s.chain.GetTransactionSpecific(&bchain.Tx{Txid: txid})
+	if err == bchain.ErrTxNotFound {
+		return nil, api.NewAPIError(fmt.Sprintf("Transaction '%v' not found", txid), true)
+	}
 	return tx, err
 }
 
@@ -1042,28 +1077,42 @@ func (s *PublicServer) apiUtxo(r *http.Request, apiVersion int) (interface{}, er
 
 func (s *PublicServer) apiBalanceHistory(r *http.Request, apiVersion int) (interface{}, error) {
 	var history []api.BalanceHistory
-	var fromTime, toTime time.Time
+	var fromTimestamp, toTimestamp int64
 	var err error
 	if i := strings.LastIndexByte(r.URL.Path, '/'); i > 0 {
 		gap, ec := strconv.Atoi(r.URL.Query().Get("gap"))
 		if ec != nil {
 			gap = 0
 		}
-		t := r.URL.Query().Get("from")
-		if t != "" {
-			fromTime, _ = time.Parse("2006-01-02", t)
+		from := r.URL.Query().Get("from")
+		if from != "" {
+			fromTimestamp, err = strconv.ParseInt(from, 10, 64)
+			if err != nil {
+				return history, err
+			}
 		}
-		t = r.URL.Query().Get("to")
-		if t != "" {
-			// time.RFC3339
-			toTime, _ = time.Parse("2006-01-02", t)
+		to := r.URL.Query().Get("to")
+		if to != "" {
+			toTimestamp, err = strconv.ParseInt(to, 10, 64)
+			if err != nil {
+				return history, err
+			}
+		}
+		var groupBy uint64
+		groupBy, err = strconv.ParseUint(r.URL.Query().Get("groupBy"), 10, 32)
+		if err != nil || groupBy == 0 {
+			groupBy = 3600
 		}
 		fiat := r.URL.Query().Get("fiatcurrency")
-		history, err = s.api.GetXpubBalanceHistory(r.URL.Path[i+1:], fromTime, toTime, fiat, gap)
+		var fiatArray []string
+		if fiat != "" {
+			fiatArray = []string{fiat}
+		}
+		history, err = s.api.GetXpubBalanceHistory(r.URL.Path[i+1:], fromTimestamp, toTimestamp, fiatArray, gap, uint32(groupBy))
 		if err == nil {
 			s.metrics.ExplorerViews.With(common.Labels{"action": "api-xpub-balancehistory"}).Inc()
 		} else {
-			history, err = s.api.GetBalanceHistory(r.URL.Path[i+1:], fromTime, toTime, fiat)
+			history, err = s.api.GetBalanceHistory(r.URL.Path[i+1:], fromTimestamp, toTimestamp, fiatArray, uint32(groupBy))
 			s.metrics.ExplorerViews.With(common.Labels{"action": "api-address-balancehistory"}).Inc()
 		}
 	}
@@ -1130,25 +1179,40 @@ func (s *PublicServer) apiSendTx(r *http.Request, apiVersion int) (interface{}, 
 // apiTickersList returns a list of available FiatRates currencies
 func (s *PublicServer) apiTickersList(r *http.Request, apiVersion int) (interface{}, error) {
 	s.metrics.ExplorerViews.With(common.Labels{"action": "api-tickers-list"}).Inc()
-	date := strings.ToLower(r.URL.Query().Get("date"))
-	result, err := s.api.GetFiatRatesTickersList(date)
+	timestampString := strings.ToLower(r.URL.Query().Get("timestamp"))
+	timestamp, err := strconv.ParseInt(timestampString, 10, 64)
+	if err != nil {
+		return nil, api.NewAPIError("Parameter \"timestamp\" is not a valid Unix timestamp.", true)
+	}
+	result, err := s.api.GetFiatRatesTickersList(timestamp)
 	return result, err
 }
 
-// apiTickers returns FiatRates ticker prices for the specified block or date.
+// apiTickers returns FiatRates ticker prices for the specified block or timestamp.
 func (s *PublicServer) apiTickers(r *http.Request, apiVersion int) (interface{}, error) {
 	var result *db.ResultTickerAsString
 	var err error
+
 	currency := strings.ToLower(r.URL.Query().Get("currency"))
+	var currencies []string
+	if currency != "" {
+		currencies = []string{currency}
+	}
 
 	if block := r.URL.Query().Get("block"); block != "" {
 		// Get tickers for specified block height or block hash
 		s.metrics.ExplorerViews.With(common.Labels{"action": "api-tickers-block"}).Inc()
-		result, err = s.api.GetFiatRatesForBlockID(block, currency)
-	} else if date := r.URL.Query().Get("date"); date != "" {
-		// Get tickers for specified date
+		result, err = s.api.GetFiatRatesForBlockID(block, currencies)
+	} else if timestampString := r.URL.Query().Get("timestamp"); timestampString != "" {
+		// Get tickers for specified timestamp
 		s.metrics.ExplorerViews.With(common.Labels{"action": "api-tickers-date"}).Inc()
-		resultTickers, err := s.api.GetFiatRatesForDates([]string{date}, currency)
+
+		timestamp, err := strconv.ParseInt(timestampString, 10, 64)
+		if err != nil {
+			return nil, api.NewAPIError("Parameter \"timestamp\" is not a valid Unix timestamp.", true)
+		}
+
+		resultTickers, err := s.api.GetFiatRatesForTimestamps([]int64{timestamp}, currencies)
 		if err != nil {
 			return nil, err
 		}
@@ -1156,7 +1220,7 @@ func (s *PublicServer) apiTickers(r *http.Request, apiVersion int) (interface{},
 	} else {
 		// No parameters - get the latest available ticker
 		s.metrics.ExplorerViews.With(common.Labels{"action": "api-tickers-last"}).Inc()
-		result, err = s.api.GetCurrentFiatRates(currency)
+		result, err = s.api.GetCurrentFiatRates(currencies)
 	}
 	if err != nil {
 		return nil, err

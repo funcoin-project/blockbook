@@ -1,13 +1,13 @@
 package unobtanium
 
 import (
-	"blockbook/bchain"
-	"blockbook/bchain/coins/btc"
-	"blockbook/bchain/coins/utils"
 	"bytes"
 
 	"github.com/martinboehm/btcd/wire"
 	"github.com/martinboehm/btcutil/chaincfg"
+	"github.com/trezor/blockbook/bchain"
+	"github.com/trezor/blockbook/bchain/coins/btc"
+	"github.com/trezor/blockbook/bchain/coins/utils"
 )
 
 // magic numbers
@@ -31,12 +31,12 @@ func init() {
 
 // UnobtaniumParser handle
 type UnobtaniumParser struct {
-	*btc.BitcoinParser
+	*btc.BitcoinLikeParser
 }
 
 // NewUnobtaniumParser returns new UnobtaniumParser instance
 func NewUnobtaniumParser(params *chaincfg.Params, c *btc.Configuration) *UnobtaniumParser {
-	return &UnobtaniumParser{BitcoinParser: btc.NewBitcoinParser(params, c)}
+	return &UnobtaniumParser{BitcoinLikeParser: btc.NewBitcoinLikeParser(params, c)}
 }
 
 // GetChainParams returns network parameters

@@ -1,11 +1,10 @@
 package zec
 
 import (
-	"blockbook/bchain"
-	"blockbook/bchain/coins/btc"
-
 	"github.com/martinboehm/btcd/wire"
 	"github.com/martinboehm/btcutil/chaincfg"
+	"github.com/trezor/blockbook/bchain"
+	"github.com/trezor/blockbook/bchain/coins/btc"
 )
 
 const (
@@ -49,15 +48,15 @@ func init() {
 
 // ZCashParser handle
 type ZCashParser struct {
-	*btc.BitcoinParser
+	*btc.BitcoinLikeParser
 	baseparser *bchain.BaseParser
 }
 
 // NewZCashParser returns new ZCashParser instance
 func NewZCashParser(params *chaincfg.Params, c *btc.Configuration) *ZCashParser {
 	return &ZCashParser{
-		BitcoinParser: btc.NewBitcoinParser(params, c),
-		baseparser:    &bchain.BaseParser{},
+		BitcoinLikeParser: btc.NewBitcoinLikeParser(params, c),
+		baseparser:        &bchain.BaseParser{},
 	}
 }
 

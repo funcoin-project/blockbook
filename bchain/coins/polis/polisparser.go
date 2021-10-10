@@ -1,10 +1,9 @@
 package polis
 
 import (
-	"blockbook/bchain/coins/btc"
-
 	"github.com/martinboehm/btcd/wire"
 	"github.com/martinboehm/btcutil/chaincfg"
+	"github.com/trezor/blockbook/bchain/coins/btc"
 )
 
 // magic numbers
@@ -46,12 +45,12 @@ func init() {
 
 // PolisParser handle
 type PolisParser struct {
-	*btc.BitcoinParser
+	*btc.BitcoinLikeParser
 }
 
 // NewPolisParser returns new PolisParser instance
 func NewPolisParser(params *chaincfg.Params, c *btc.Configuration) *PolisParser {
-	return &PolisParser{BitcoinParser: btc.NewBitcoinParser(params, c)}
+	return &PolisParser{BitcoinLikeParser: btc.NewBitcoinLikeParser(params, c)}
 }
 
 // GetChainParams contains network parameters for the main Polis network,

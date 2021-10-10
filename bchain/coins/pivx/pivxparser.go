@@ -1,22 +1,19 @@
 package pivx
 
 import (
-	"blockbook/bchain"
-	"blockbook/bchain/coins/btc"
-	"blockbook/bchain/coins/utils"
 	"bytes"
-	"io"
-
 	"encoding/hex"
 	"encoding/json"
-
+	"io"
 	"math/big"
 
-	"github.com/martinboehm/btcd/blockchain"
-
 	"github.com/juju/errors"
+	"github.com/martinboehm/btcd/blockchain"
 	"github.com/martinboehm/btcd/wire"
 	"github.com/martinboehm/btcutil/chaincfg"
+	"github.com/trezor/blockbook/bchain"
+	"github.com/trezor/blockbook/bchain/coins/btc"
+	"github.com/trezor/blockbook/bchain/coins/utils"
 )
 
 // magic numbers
@@ -53,7 +50,7 @@ func init() {
 
 // PivXParser handle
 type PivXParser struct {
-	*btc.BitcoinParser
+	*btc.BitcoinLikeParser
 	baseparser                         *bchain.BaseParser
 	BitcoinOutputScriptToAddressesFunc btc.OutputScriptToAddressesFunc
 }
@@ -61,8 +58,8 @@ type PivXParser struct {
 // NewPivXParser returns new PivXParser instance
 func NewPivXParser(params *chaincfg.Params, c *btc.Configuration) *PivXParser {
 	p := &PivXParser{
-		BitcoinParser: btc.NewBitcoinParser(params, c),
-		baseparser:    &bchain.BaseParser{},
+		BitcoinLikeParser: btc.NewBitcoinLikeParser(params, c),
+		baseparser:        &bchain.BaseParser{},
 	}
 	p.BitcoinOutputScriptToAddressesFunc = p.OutputScriptToAddressesFunc
 	p.OutputScriptToAddressesFunc = p.outputScriptToAddresses
@@ -98,8 +95,8 @@ func (p *PivXParser) ParseBlock(b []byte) (*bchain.Block, error) {
 		return nil, errors.Annotatef(err, "Deserialize")
 	}
 
-	if h.Version > 3 {
-		// Skip past AccumulatorCheckpoint which was added in pivx block version 4
+	if h.Version > 3 && h.Version < 7 {
+		// Skip past AccumulatorCheckpoint (block version 4, 5 and 6)
 		r.Seek(32, io.SeekCurrent)
 	}
 
